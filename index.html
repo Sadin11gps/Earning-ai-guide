@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RDS TEAM - Verified App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        body { background-color: #020617; font-family: 'Inter', sans-serif; color: #f8fafc; overflow: hidden; }
+        .nav-blur { backdrop-filter: blur(15px); background: rgba(15, 23, 42, 0.95); }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-up { animation: slideUp 0.4s ease-out forwards; }
+        .active-nav { color: #3b82f6; transform: translateY(-5px); transition: all 0.3s; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb_2_4r89AhNKceMJ80HvX-MOgSlcUegY",
+            authDomain: "earning-ai-guide.firebaseapp.com",
+            databaseURL: "https://earning-ai-guide-default-rtdb.firebaseio.com",
+            projectId: "earning-ai-guide",
+            storageBucket: "earning-ai-guide.firebasestorage.app",
+            messagingSenderId: "856725361260",
+            appId: "1:856725361260:web:f3248390c3db55f65c3e49"
+        };
+
+        const BOT_USERNAME = "earning_ai_guide_bot";
+        const CHANNEL_LINK = "https://t.me/amrrdsteam";
+        const WELCOME_BONUS = 0.50; // $0.50 Welcome Bonus
+        const REFER_BONUS = 0.10;   // $0.10 per Referral
+        const AD_REWARD = 0.005;    // Reward per Ad
+        const MIN_WITHDRAW = 5.00;
+        const appId = 'rds-team-final-verified';
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        const App = () => {
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('home');
+            const [userData, setUserData] = useState(null);
+            const [user, setUser] = useState(null);
+            const [copied, setCopied] = useState(false);
+            
+            // Payout States
+            const [payoutAmount, setPayoutAmount] = useState('');
+            const [payoutMethod, setPayoutMethod] = useState('bKash');
+            const [payoutAddress, setPayoutAddress] = useState('');
+
+            useEffect(() => {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                const referrerId = tg.initDataUnsafe?.start_param;
+
+                auth.signInAnonymously().then(({ user: currUser }) => {
+                    setUser(currUser);
+                    const userRef = db.collection('artifacts').doc(appId).collection('users').doc(currUser.uid).collection('profile').doc('data');
+                    
+                    userRef.onSnapshot(async (doc) => {
+                        if (doc.exists) {
+                            setUserData(doc.data());
+                        } else {
+                            // First Time User - Welcome Bonus & Referral Logic
+                            const newUser = {
+                                uid: currUser.uid,
+                                name: tg.initDataUnsafe?.user?.first_name || "ইউজার",
+                                photo: tg.initDataUnsafe?.user?.photo_url || null,
+                                earning_balance: WELCOME_BONUS,
+                                refer_balance: 0,
+                                referrals: 0,
+                                clicks: 0,
+                                isJoined: false,
+                                referrer: referrerId || null
+                            };
+                            await userRef.set(newUser);
+
+                            // If Referred by someone, update referrer's balance
+                            if (referrerId) {
+                                const refRef = db.collection('artifacts').doc(appId).collection('users').doc(referrerId).collection('profile').doc('data');
+                                await refRef.update({
+                                    refer_balance: firebase.firestore.FieldValue.increment(REFER_BONUS),
+                                    referrals: firebase.firestore.FieldValue.increment(1)
+                                });
+                            }
+                        }
+                    });
+                });
+                setTimeout(() => setLoading(false), 3000);
+            }, []);
+
+            const watchAd = () => {
+                if (!userData?.isJoined) {
+                    alert("দয়া করে আগে আমাদের চ্যানেলে জয়েন করুন!");
+                    return;
+                }
+                const userRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('profile').doc('data');
+                userRef.update({
+                    earning_balance: firebase.firestore.FieldValue.increment(AD_REWARD),
+                    clicks: firebase.firestore.FieldValue.increment(1)
+                });
+                alert(`${AD_REWARD} ডলার আপনার ব্যালেন্সে যোগ করা হয়েছে!`);
+            };
+
+            const submitPayout = async () => {
+                const amount = parseFloat(payoutAmount);
+                if (amount < MIN_WITHDRAW) return alert(`ন্যূনতম উইথড্র ${MIN_WITHDRAW} ডলার।`);
+                if (amount > userData.earning_balance) return alert(`আপনার ব্যালেন্স যথেষ্ট নয়।`);
+                if (!payoutAddress) return alert(`আপনার পেমেন্ট এড্রেস দিন।`);
+
+                await db.collection('artifacts').doc(appId).collection('payouts').add({
+                    uid: user.uid,
+                    name: userData.name,
+                    amount,
+                    method: payoutMethod,
+                    address: payoutAddress,
+                    status: 'pending',
+                    date: new Date().toISOString()
+                });
+
+                await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('profile').doc('data').update({
+                    earning_balance: firebase.firestore.FieldValue.increment(-amount)
+                });
+
+                alert("উইথড্র রিকোয়েস্ট সফল হয়েছে!");
+                setPayoutAmount('');
+                setPayoutAddress('');
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center bg-[#020617]">
+                    <Icon name="heart" size={80} className="text-red-600 fill-red-600 animate-pulse mb-6" />
+                    <h1 className="text-3xl font-black tracking-widest text-white italic">RDS TEAM</h1>
+                    <div className="w-48 h-1 bg-slate-800 rounded-full mt-4 overflow-hidden">
+                        <div className="h-full bg-blue-600 animate-loading"></div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col h-screen">
+                    {/* Top Bar */}
+                    <div className="px-6 py-4 flex justify-between items-center bg-slate-900/50 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">R</div>
+                            <span className="font-black italic text-xl">RDS TEAM</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 overflow-hidden" onClick={() => setActiveTab('profile')}>
+                            {userData?.photo ? <img src={userData.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-600 flex items-center justify-center font-bold">{userData?.name?.[0]}</div>}
+                        </div>
+                    </div>
+
+                    <main className="flex-1 overflow-y-auto p-6 pb-28">
+                        {activeTab === 'home' && (
+                            <div className="space-y-6 animate-up">
+                                <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden">
+                                    <Icon name="wallet" size={100} className="absolute -right-4 -top-4 opacity-10" />
+                                    <p className="text-white/70 text-xs font-bold uppercase tracking-widest">মোট ব্যালেন্স</p>
+                                    <h2 className="text-4xl font-black mt-1">${(userData?.earning_balance + userData?.refer_balance)?.toFixed(3)}</h2>
+                                    <div className="mt-4 flex gap-4 text-[10px] font-bold uppercase">
+                                        <span className="bg-black/20 px-3 py-1 rounded-full">Ads: ${userData?.earning_balance?.toFixed(3)}</span>
+                                        <span className="bg-black/20 px-3 py-1 rounded-full">Refer: ${userData?.refer_balance?.toFixed(3)}</span>
+                                    </div>
+                                </div>
+
+                                <button onClick={watchAd} className="w-full bg-slate-900 border border-blue-500/20 p-6 rounded-[2.5rem] flex items-center justify-between group active:scale-95 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                            <Icon name="play" size={28} />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="font-black text-lg">Watch Ads</h4>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase">প্রতি এডে পাবেন ${AD_REWARD}</p>
+                                        </div>
+                                    </div>
+                                    <Icon name="chevron-right" className="text-slate-700" />
+                                </button>
+
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                    <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                                        <Icon name="mouse-pointer" size={20} className="mx-auto text-blue-500 mb-2" />
+                                        <p className="text-[10px] text-slate-500 font-black uppercase">Ad Clicks</p>
+                                        <p className="text-2xl font-black">{userData?.clicks}</p>
+                                    </div>
+                                    <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                                        <Icon name="users" size={20} className="mx-auto text-green-500 mb-2" />
+                                        <p className="text-[10px] text-slate-500 font-black uppercase">Total Refer</p>
+                                        <p className="text-2xl font-black">{userData?.referrals}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'refer' && (
+                            <div className="space-y-6 text-center animate-up">
+                                <Icon name="share-2" size={80} className="mx-auto text-indigo-500 mb-2" />
+                                <h3 className="text-3xl font-black italic">REFER & EARN</h3>
+                                <p className="text-slate-400 text-sm">প্রতিটি সফল রেফারে পাবেন ${REFER_BONUS} বোনাস!</p>
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-widest">আপনার রেফারেল লিংক</p>
+                                    <div className="flex items-center gap-2 bg-black/40 p-4 rounded-2xl border border-white/5">
+                                        <span className="text-[10px] truncate flex-1 font-mono text-blue-400">t.me/{BOT_USERNAME}?start={user?.uid}</span>
+                                        <button onClick={() => { navigator.clipboard.writeText(`https://t.me/${BOT_USERNAME}?start=${user?.uid}`); setCopied(true); setTimeout(()=>setCopied(false), 2000); }} className={`p-3 rounded-xl ${copied ? 'bg-green-600' : 'bg-blue-600'}`}>
+                                            <Icon name={copied ? "check" : "copy"} size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'payout' && (
+                            <div className="space-y-6 animate-up">
+                                <h3 className="text-2xl font-black italic">PAY OUT</h3>
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-blue-500/10">
+                                    <div className="mb-6">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase">উত্তোলনযোগ্য ব্যালেন্স</p>
+                                        <h2 className="text-4xl font-black text-blue-500">${userData?.earning_balance?.toFixed(2)}</h2>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <select value={payoutMethod} onChange={e=>setPayoutMethod(e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl outline-none font-bold">
+                                            <option value="bKash">bKash (Personal)</option>
+                                            <option value="Nagad">Nagad (Personal)</option>
+                                            <option value="Binance">Binance (USDT)</option>
+                                        </select>
+                                        <input type="number" placeholder="পরিমাণ ($)" value={payoutAmount} onChange={e=>setPayoutAmount(e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl outline-none font-bold" />
+                                        <input type="text" placeholder="একউন্ট নাম্বার / এড্রেস" value={payoutAddress} onChange={e=>setPayoutAddress(e.target.value)} className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl outline-none font-bold" />
+                                        <button onClick={submitPayout} className="w-full bg-blue-600 py-5 rounded-[2rem] font-black shadow-lg shadow-blue-900/20 active:scale-95 transition-all">উইথড্র রিকোয়েস্ট দিন</button>
+                                    </div>
+                                    <p className="text-[10px] text-center mt-4 text-slate-500 font-bold uppercase tracking-tighter">Min Withdraw: $5.00 | Processing: 24h</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="text-center py-20 animate-up">
+                                <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/5">
+                                    <Icon name="list-checks" size={32} className="text-slate-700" />
+                                </div>
+                                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">এখনো কোনো লেনদেন নেই</p>
+                            </div>
+                        )}
+
+                        {activeTab === 'profile' && (
+                            <div className="space-y-6 animate-up">
+                                <div className="bg-slate-900 p-10 rounded-[3rem] text-center relative overflow-hidden border border-white/5">
+                                    <div className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-blue-600/20 overflow-hidden shadow-2xl">
+                                        {userData?.photo ? <img src={userData.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-600 flex items-center justify-center text-3xl font-bold">{userData?.name?.[0]}</div>}
+                                    </div>
+                                    <h4 className="text-2xl font-black">{userData?.name}</h4>
+                                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">ID: {user?.uid?.substring(0,8)}</p>
+                                </div>
+                                <div className="bg-slate-900 rounded-[2.5rem] overflow-hidden border border-white/5">
+                                    <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                                        <div className="flex items-center gap-4"><Icon name="message-circle" className="text-blue-500" /><span className="text-xs font-black uppercase">সাপোর্ট</span></div>
+                                        <Icon name="external-link" size={16} className="text-slate-600" />
+                                    </div>
+                                    <div className="p-6 flex justify-between items-center">
+                                        <div className="flex items-center gap-4"><Icon name="shield-check" className="text-green-500" /><span className="text-xs font-black uppercase">নিয়মাবলী</span></div>
+                                        <Icon name="chevron-right" size={16} className="text-slate-600" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Navbar */}
+                    <nav className="fixed bottom-0 left-0 right-0 nav-blur border-t border-white/5 p-4 pb-10 flex justify-around items-end z-50">
+                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'active-nav' : 'text-slate-500'}`}>
+                            <Icon name="home" />
+                            <span className="text-[8px] font-black uppercase">হোম</span>
+                        </button>
+                        <button onClick={() => setActiveTab('refer')} className={`flex flex-col items-center gap-1 ${activeTab === 'refer' ? 'active-nav' : 'text-slate-500'}`}>
+                            <Icon name="users" />
+                            <span className="text-[8px] font-black uppercase">রেফার</span>
+                        </button>
+                        <button onClick={() => setActiveTab('payout')} className="relative -top-6">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all ${activeTab === 'payout' ? 'bg-blue-600 rotate-12 scale-110' : 'bg-slate-800'}`}>
+                                <Icon name="wallet" className="text-white" size={28} />
+                            </div>
+                        </button>
+                        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 ${activeTab === 'history' ? 'active-nav' : 'text-slate-500'}`}>
+                            <Icon name="history" />
+                            <span className="text-[8px] font-black uppercase">হিস্ট্রি</span>
+                        </button>
+                        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'active-nav' : 'text-slate-500'}`}>
+                            <Icon name="user" />
+                            <span className="text-[8px] font-black uppercase">প্রোফাইল</span>
+                        </button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
