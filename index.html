@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RDS TEAM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase Legacy Scripts for better compatibility -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { 
+            background-color: #050810; 
+            font-family: 'Inter', sans-serif; 
+            color: #f8fafc; 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        @keyframes fillProgress { 
+            0% { width: 0%; } 
+            100% { width: 100%; } 
+        }
+        
+        .loading-bar-fill { 
+            height: 100%; 
+            background: linear-gradient(90deg, #dc2626, #2563eb, #7c3aed); 
+            animation: fillProgress 3.5s linear forwards; 
+        }
+
+        .tab-active {
+            color: #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        .nav-blur {
+            backdrop-filter: blur(20px);
+            background: rgba(10, 15, 30, 0.85);
+        }
+
+        .animate-up {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Firebase Configuration (Using standard provided config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb_2_4r89AhNKceMJ80HvX-MOgSlcUegY",
+            authDomain: "earning-ai-guide.firebaseapp.com",
+            databaseURL: "https://earning-ai-guide-default-rtdb.firebaseio.com",
+            projectId: "earning-ai-guide",
+            storageBucket: "earning-ai-guide.firebasestorage.app",
+            messagingSenderId: "856725361260",
+            appId: "1:856725361260:web:f3248390c3db55f65c3e49"
+        };
+
+        const APP_ID = 'rds_stable_v1';
+        const BOT_USERNAME = "earning_ai_guide_bot";
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // SVG Icons Component to avoid external library errors
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const icons = {
+                home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>,
+                users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>,
+                wallet: <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>,
+                history: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>,
+                user: <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>,
+                play: <polygon points="5 3 19 12 5 21 5 3"/>,
+                chevron: <polyline points="9 18 15 12 9 6"/>
+            };
+            return (
+                <svg 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                >
+                    {icons[name]}
+                </svg>
+            );
+        };
+
+        const App = () => {
+            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null);
+            const [profile, setProfile] = useState(null);
+            const [activeTab, setActiveTab] = useState('home');
+
+            useEffect(() => {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+
+                const login = async () => {
+                    try {
+                        const { user: currUser } = await auth.signInAnonymously();
+                        setUser(currUser);
+                        
+                        const profilePath = db.collection('artifacts').doc(APP_ID).collection('users').doc(currUser.uid);
+                        
+                        profilePath.onSnapshot((doc) => {
+                            if (doc.exists) {
+                                setProfile(doc.data());
+                            } else {
+                                const referrerId = tg.initDataUnsafe?.start_param || null;
+                                const initialData = {
+                                    uid: currUser.uid,
+                                    name: tg.initDataUnsafe?.user?.first_name || "ইউজার",
+                                    balance: 0.50, // ওয়েলকাম বোনাস
+                                    clicks: 0,
+                                    referrals: 0,
+                                    photo: tg.initDataUnsafe?.user?.photo_url || null
+                                };
+                                profilePath.set(initialData);
+
+                                // রেফারেল বোনাস লজিক
+                                if (referrerId && referrerId !== currUser.uid) {
+                                    db.collection('artifacts').doc(APP_ID).collection('users').doc(referrerId).update({
+                                        balance: firebase.firestore.FieldValue.increment(0.10),
+                                        referrals: firebase.firestore.FieldValue.increment(1)
+                                    });
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.error("Login Error:", err);
+                    }
+                };
+
+                login();
+                setTimeout(() => setLoading(false), 3800);
+            }, []);
+
+            const handleWork = () => {
+                if (!user) return;
+                db.collection('artifacts').doc(APP_ID).collection('users').doc(user.uid).update({
+                    balance: firebase.firestore.FieldValue.increment(0.005),
+                    clicks: firebase.firestore.FieldValue.increment(1)
+                });
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center bg-[#050810]">
+                    <div className="text-red-600 animate-pulse mb-8">
+                        <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    </div>
+                    <h1 className="text-4xl font-black tracking-widest text-white italic">RDS TEAM</h1>
+                    <div className="w-64 h-1 bg-slate-900 rounded-full mt-6 overflow-hidden">
+                        <div className="loading-bar-fill"></div>
+                    </div>
+                    <p className="mt-6 text-[10px] text-slate-500 uppercase tracking-[0.5em] font-bold">সার্ভার কানেক্ট হচ্ছে...</p>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col h-screen overflow-hidden">
+                    {/* Header */}
+                    <header className="px-6 py-5 flex justify-between items-center bg-slate-900/40 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold shadow-lg shadow-blue-900/20">R</div>
+                            <span className="font-black italic text-xl tracking-tighter">RDS TEAM</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 overflow-hidden shadow-xl">
+                            {profile?.photo ? <img src={profile.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-600 flex items-center justify-center font-bold">{profile?.name?.[0]}</div>}
+                        </div>
+                    </header>
+
+                    {/* Content */}
+                    <main className="flex-1 overflow-y-auto p-6 pb-32">
+                        {activeTab === 'home' && (
+                            <div className="space-y-6 animate-up">
+                                <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10">
+                                    <div className="absolute -right-6 -top-6 opacity-10 rotate-12"><Icon name="wallet" size={120} /></div>
+                                    <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">মোট ব্যালেন্স</p>
+                                    <h2 className="text-5xl font-black mt-1 tracking-tighter text-white">${profile?.balance?.toFixed(3)}</h2>
+                                    <div className="mt-6 flex gap-3">
+                                        <div className="bg-white/10 px-4 py-1.5 rounded-full text-[9px] font-black uppercase border border-white/5">ভেরিফাইড ইউজার</div>
+                                    </div>
+                                </div>
+
+                                <button onClick={handleWork} className="w-full bg-slate-900/80 border border-blue-500/10 p-6 rounded-[2.5rem] flex items-center justify-between shadow-xl active:scale-95 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-4 bg-blue-600/10 rounded-2xl text-blue-500"><Icon name="play" size={28} /></div>
+                                        <div className="text-left">
+                                            <h4 className="font-bold text-lg text-white">Watch Video Ads</h4>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">প্রতি ক্লিকের জন্য $0.005</p>
+                                        </div>
+                                    </div>
+                                    <Icon name="chevron" className="text-slate-700" />
+                                </button>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 text-center shadow-lg">
+                                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">ক্লিক সংখ্যা</p>
+                                        <p className="text-3xl font-black text-white mt-1">{profile?.clicks}</p>
+                                    </div>
+                                    <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 text-center shadow-lg">
+                                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">মোট রেফার</p>
+                                        <p className="text-3xl font-black text-white mt-1">{profile?.referrals}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'refer' && (
+                            <div className="space-y-6 text-center animate-up">
+                                <div className="mx-auto text-indigo-500 mb-2 p-5 bg-indigo-500/10 rounded-[2.5rem] inline-block"><Icon name="users" size={80} /></div>
+                                <h3 className="text-3xl font-black italic uppercase tracking-tighter">রেফার করে আয় করুন</h3>
+                                <div className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 shadow-2xl text-left">
+                                    <p className="text-[10px] text-slate-400 mb-4 uppercase font-black tracking-widest">আপনার রেফারেল লিংক</p>
+                                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 truncate text-[10px] font-mono text-blue-400 select-all">
+                                        t.me/{BOT_USERNAME}/app?startapp={user?.uid}
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const link = `https://t.me/${BOT_USERNAME}/app?startapp=${user?.uid}`;
+                                            navigator.clipboard.writeText(link);
+                                            alert("লিংক কপি হয়েছে!");
+                                        }} 
+                                        className="w-full mt-6 bg-indigo-600 py-5 rounded-[2rem] font-black text-sm shadow-xl shadow-indigo-900/20 active:scale-95 transition-all"
+                                    >
+                                        লিংক কপি করুন
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'wallet' && (
+                            <div className="space-y-6 animate-up">
+                                <h3 className="text-2xl font-black italic uppercase tracking-tighter px-2">টাকা উত্তোলন</h3>
+                                <div className="bg-slate-900 p-8 rounded-[3rem] border border-blue-500/10 shadow-2xl">
+                                    <div className="mb-8">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">উত্তোলনযোগ্য ব্যালেন্স</p>
+                                        <h2 className="text-4xl font-black text-blue-500 mt-1">${profile?.balance?.toFixed(2)}</h2>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-slate-600 px-2">মেথড সিলেক্ট করুন</p>
+                                            <select className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl outline-none font-bold text-sm">
+                                                <option>bKash (Personal)</option>
+                                                <option>Nagad (Personal)</option>
+                                                <option>Binance (USDT)</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-slate-600 px-2">ওয়ালেট এড্রেস / নম্বর</p>
+                                            <input type="text" placeholder="017XXXXXXXX" className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl outline-none font-bold text-sm" />
+                                        </div>
+                                        <button className="w-full bg-blue-600 py-6 rounded-[2rem] font-black text-lg shadow-xl shadow-blue-900/40 active:scale-95 transition-all mt-4">উইথড্র রিকোয়েস্ট পাঠান</button>
+                                    </div>
+                                    <p className="text-center text-[9px] text-slate-500 font-bold uppercase mt-8 tracking-widest opacity-50">মিনিমাম উইথড্র $5.00</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && <div className="text-center py-24 text-slate-700 font-black uppercase text-[10px] tracking-widest italic animate-up">কোনো হিস্ট্রি পাওয়া যায়নি</div>}
+                        
+                        {activeTab === 'profile' && (
+                            <div className="space-y-6 animate-up text-center">
+                                <div className="bg-slate-900 p-12 rounded-[4rem] border border-white/5 shadow-2xl relative overflow-hidden">
+                                    <div className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-blue-600/20 overflow-hidden shadow-2xl">
+                                        {profile?.photo ? <img src={profile.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-blue-600 flex items-center justify-center text-3xl font-black">{profile?.name?.[0]}</div>}
+                                    </div>
+                                    <h4 className="text-2xl font-black text-white">{profile?.name}</h4>
+                                    <p className="text-slate-500 text-[10px] font-black uppercase mt-2 tracking-widest">ইউজার আইডি: {user?.uid?.substring(0,10)}</p>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Bottom Nav */}
+                    <nav className="fixed bottom-0 left-0 right-0 nav-blur border-t border-white/5 p-4 pb-12 flex justify-around items-end z-50">
+                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'home' ? 'text-blue-500 scale-110' : 'text-slate-600'}`}>
+                            <Icon name="home" />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">হোম</span>
+                        </button>
+                        <button onClick={() => setActiveTab('refer')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'refer' ? 'text-blue-500 scale-110' : 'text-slate-600'}`}>
+                            <Icon name="users" />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">রেফার</span>
+                        </button>
+                        
+                        <button onClick={() => setActiveTab('wallet')} className="relative -top-8 group">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all transform ${activeTab === 'wallet' ? 'bg-blue-600 rotate-12 scale-110' : 'bg-slate-800'}`}>
+                                <Icon name="wallet" className="text-white" size={30} />
+                            </div>
+                        </button>
+
+                        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'history' ? 'text-blue-500 scale-110' : 'text-slate-600'}`}>
+                            <Icon name="history" />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">হিস্ট্রি</span>
+                        </button>
+                        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'profile' ? 'text-blue-500 scale-110' : 'text-slate-600'}`}>
+                            <Icon name="user" />
+                            <span className="text-[8px] font-black uppercase tracking-tighter">প্রোফাইল</span>
+                        </button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
