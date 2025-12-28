@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RDS TEAM OFFICIAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { background-color: #030712; font-family: 'Inter', sans-serif; color: #f9fafb; margin: 0; overflow: hidden; }
+        .glass { background: rgba(31, 41, 55, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .tab-panel { display: none; height: 100%; overflow-y: auto; }
+        .tab-panel.active { display: block; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-active { color: #3b82f6; border-top: 2px solid #3b82f6; }
+        .btn-click:active { transform: scale(0.95); transition: 0.1s; }
+        #loader { position: fixed; inset: 0; background: #030712; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    </style>
+</head>
+<body>
+
+    <!-- Splash Loader -->
+    <div id="loader">
+        <div class="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <h1 class="mt-6 text-2xl font-black italic tracking-tighter text-blue-500">RDS TEAM PRO</h1>
+        <p id="l-status" class="mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">সার্ভার কানেক্ট হচ্ছে...</p>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden h-screen flex flex-col">
+        
+        <!-- Header -->
+        <header class="p-5 flex justify-between items-center glass border-b border-white/5">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black italic shadow-lg">R</div>
+                <span class="font-black italic text-lg uppercase tracking-tight">RDS Team</span>
+            </div>
+            <div id="user-avatar" class="w-10 h-10 rounded-full bg-slate-800 border-2 border-blue-500/30 flex items-center justify-center font-bold overflow-hidden shadow-xl text-sm">U</div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 relative overflow-hidden">
+            
+            <!-- Home Tab -->
+            <div id="home" class="tab-panel active p-5 pb-28 space-y-6">
+                <!-- Balance Card -->
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-10"><svg width="120" height="120" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+                    <p class="text-white/70 text-[10px] font-bold uppercase tracking-widest">আপনার বর্তমান ব্যালেন্স</p>
+                    <h2 class="text-5xl font-black mt-2 tracking-tighter">$<span id="u-bal">0.000</span></h2>
+                    <div class="mt-6 flex items-center gap-2">
+                        <div class="px-3 py-1 bg-white/10 rounded-full text-[9px] font-bold uppercase border border-white/10">Verified User</div>
+                    </div>
+                </div>
+
+                <!-- Ad Section -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-end px-2">
+                        <h3 class="text-sm font-bold text-slate-400">ডেইলি টাস্ক</h3>
+                        <span class="text-[10px] font-bold text-blue-500 uppercase">লিমিট: <span id="u-limit">0</span>/20</span>
+                    </div>
+                    
+                    <button id="ad-btn" onclick="watchAd()" class="w-full glass p-6 rounded-[2rem] flex items-center justify-between btn-click shadow-xl group border-l-4 border-l-blue-500">
+                        <div class="flex items-center gap-4 text-left">
+                            <div class="p-4 bg-blue-500/10 rounded-2xl text-blue-500 group-disabled:text-slate-600">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            </div>
+                            <div>
+                                <h4 id="ad-btn-text" class="font-bold text-lg text-white">Watch Video Ad</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">প্রতি বিজ্ঞাপনে পাবেন $0.01</p>
+                            </div>
+                        </div>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-600"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass p-6 rounded-3xl text-center">
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">মোট ক্লিক</p>
+                            <p id="u-clicks" class="text-2xl font-black mt-1">0</p>
+                        </div>
+                        <div class="glass p-6 rounded-3xl text-center">
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">মোট রেফার</p>
+                            <p id="u-refers" class="text-2xl font-black mt-1">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Refer Tab -->
+            <div id="refer" class="tab-panel p-5 pb-28 text-center space-y-6 pt-10">
+                <div class="w-24 h-24 bg-blue-600/10 rounded-[2.5rem] flex items-center justify-center mx-auto text-blue-500 mb-2">
+                    <svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+                <h3 class="text-3xl font-black italic tracking-tighter">রেফারেল বোনাস</h3>
+                <div class="glass p-8 rounded-[3rem] text-left space-y-4">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">আপনার ইনভাইট লিংক</p>
+                    <div id="u-link" class="bg-black/50 p-5 rounded-2xl border border-white/5 text-[11px] font-mono text-blue-400 break-all select-all">লোড হচ্ছে...</div>
+                    <button onclick="copyRef()" class="w-full bg-blue-600 py-5 rounded-[2rem] font-black text-sm btn-click shadow-lg">লিংক কপি করুন</button>
+                </div>
+                <p class="text-xs text-slate-500 px-6 leading-relaxed italic">আপনার লিংকে কেউ জয়েন করলেই আপনি পাবেন $0.10 বোনাস সরাসরি ব্যালেন্সে।</p>
+            </div>
+
+            <!-- Wallet Tab -->
+            <div id="wallet" class="tab-panel p-5 pb-28 space-y-6">
+                <h3 class="text-2xl font-black italic uppercase tracking-tighter">পেমেন্ট উইথড্র</h3>
+                <div class="glass p-8 rounded-[3rem] space-y-5">
+                    <div class="bg-black/40 p-5 rounded-2xl border border-white/5">
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">উত্তোলনযোগ্য ব্যালেন্স</p>
+                        <h4 class="text-3xl font-black text-blue-500">$<span id="w-bal">0.00</span></h4>
+                    </div>
+                    <div class="space-y-4">
+                        <select id="p-method" class="w-full bg-slate-800/50 border border-white/10 p-5 rounded-2xl font-bold text-sm outline-none focus:border-blue-500">
+                            <option>bKash Personal</option>
+                            <option>Nagad Personal</option>
+                            <option>Binance (USDT)</option>
+                        </select>
+                        <input id="p-address" type="text" placeholder="নম্বর অথবা এড্রেস" class="w-full bg-slate-800/50 border border-white/10 p-5 rounded-2xl font-bold text-sm outline-none focus:border-blue-500">
+                        <input id="p-amount" type="number" placeholder="পরিমাণ ($)" class="w-full bg-slate-800/50 border border-white/10 p-5 rounded-2xl font-bold text-sm outline-none focus:border-blue-500">
+                        <button onclick="requestPayout()" class="w-full bg-blue-600 py-6 rounded-[2rem] font-black text-lg btn-click shadow-xl mt-2">রিকোয়েস্ট পাঠান</button>
+                    </div>
+                    <p class="text-center text-[9px] text-slate-600 font-black uppercase tracking-widest pt-4">মিনিমাম উইথড্র সীমা $5.00</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Navigation -->
+        <nav class="fixed bottom-0 inset-x-0 bg-[#030712]/90 backdrop-blur-2xl border-t border-white/5 px-8 flex justify-around items-center h-24 pb-8 z-50">
+            <button onclick="nav('home', this)" class="nav-btn nav-active flex flex-col items-center gap-1 transition-all">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                <span class="text-[9px] font-bold uppercase">Home</span>
+            </button>
+            <button onclick="nav('refer', this)" class="nav-btn text-slate-500 flex flex-col items-center gap-1 transition-all">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="text-[9px] font-bold uppercase">Refer</span>
+            </button>
+            <button onclick="nav('wallet', this)" class="nav-btn text-slate-500 flex flex-col items-center gap-1 transition-all">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
+                <span class="text-[9px] font-bold uppercase">Wallet</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb_2_4r89AhNKceMJ80HvX-MOgSlcUegY",
+            authDomain: "earning-ai-guide.firebaseapp.com",
+            projectId: "earning-ai-guide",
+            storageBucket: "earning-ai-guide.firebasestorage.app",
+            messagingSenderId: "856725361260",
+            appId: "1:856725361260:web:f3248390c3db55f65c3e49"
+        };
+
+        const APP_ID = 'RDS_STABLE_FINAL_V2';
+        let db, auth, user, uData = null;
+
+        // Start App
+        window.onload = async () => {
+            if(!window.firebase) return alert("ইন্টারনেট চেক করুন!");
+            
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+
+            try {
+                const res = await auth.signInAnonymously();
+                user = res.user;
+
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(user.uid);
+                
+                // Real-time Data Listen
+                userRef.onSnapshot(async (doc) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    if(doc.exists) {
+                        uData = doc.data();
+                        
+                        // Reset daily limit if date changed
+                        if(uData.lastResetDate !== today) {
+                            await userRef.update({
+                                dailyAdCount: 0,
+                                lastResetDate: today
+                            });
+                        }
+                        updateUI();
+                    } else {
+                        // Create New User
+                        const startParam = tg.initDataUnsafe?.start_param || null;
+                        const profile = {
+                            uid: user.uid,
+                            name: tg.initDataUnsafe?.user?.first_name || "ইউজার",
+                            balance: 0.50, // বোনাস
+                            clicks: 0,
+                            referrals: 0,
+                            dailyAdCount: 0,
+                            lastResetDate: today,
+                            photo: tg.initDataUnsafe?.user?.photo_url || null,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        await userRef.set(profile);
+
+                        if(startParam && startParam !== user.uid) {
+                            const rRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(startParam);
+                            await rRef.update({
+                                balance: firebase.firestore.FieldValue.increment(0.10),
+                                referrals: firebase.firestore.FieldValue.increment(1)
+                            });
+                        }
+                    }
+                    
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('app').classList.remove('hidden');
+                });
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('l-status').innerText = "Auth Error! এননিমাস অথ অন করুন।";
+            }
+        };
+
+        function updateUI() {
+            if(!uData) return;
+            document.getElementById('u-bal').innerText = uData.balance.toFixed(3);
+            document.getElementById('w-bal').innerText = uData.balance.toFixed(2);
+            document.getElementById('u-clicks').innerText = uData.clicks;
+            document.getElementById('u-refers').innerText = uData.referrals;
+            document.getElementById('u-limit').innerText = uData.dailyAdCount;
+            document.getElementById('u-link').innerText = `https://t.me/earning_ai_guide_bot/app?startapp=${user.uid}`;
+            
+            const btn = document.getElementById('ad-btn');
+            const btnText = document.getElementById('ad-btn-text');
+            
+            if(uData.dailyAdCount >= 20) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'grayscale');
+                btnText.innerText = "ডেইলি লিমিট শেষ!";
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'grayscale');
+                btnText.innerText = "Watch Video Ad";
+            }
+
+            const avatar = document.getElementById('user-avatar');
+            if(uData.photo) avatar.innerHTML = `<img src="${uData.photo}" class="w-full h-full object-cover">`;
+            else avatar.innerText = uData.name[0];
+        }
+
+        async function watchAd() {
+            if(!user || uData.dailyAdCount >= 20) return;
+            
+            const userRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(user.uid);
+            await userRef.update({
+                balance: firebase.firestore.FieldValue.increment(0.01),
+                clicks: firebase.firestore.FieldValue.increment(1),
+                dailyAdCount: firebase.firestore.FieldValue.increment(1)
+            });
+            alert("সফল! আপনি $0.01 পেয়েছেন।");
+        }
+
+        async function requestPayout() {
+            const amt = parseFloat(document.getElementById('p-amount').value);
+            const adr = document.getElementById('p-address').value;
+            const met = document.getElementById('p-method').value;
+
+            if(isNaN(amt) || amt < 5) return alert("মিনিমাম $5 উইথড্র রিকোয়েস্ট দিন।");
+            if(amt > uData.balance) return alert("ব্যালেন্স নেই!");
+            if(!adr) return alert("নম্বর দিন।");
+
+            await db.collection('artifacts').doc(APP_ID).collection('payouts').add({
+                uid: user.uid, name: uData.name, amount: amt, method: met, address: adr, status: 'pending', time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await db.collection('artifacts').doc(APP_ID).collection('users').doc(user.uid).update({
+                balance: firebase.firestore.FieldValue.increment(-amt)
+            });
+            alert("রিকোয়েস্ট পাঠানো হয়েছে!");
+            document.getElementById('p-amount').value = '';
+            document.getElementById('p-address').value = '';
+        }
+
+        function nav(id, el) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-active', 'text-blue-500'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.add('text-slate-500'));
+            el.classList.add('nav-active');
+            el.classList.remove('text-slate-500');
+        }
+
+        function copyRef() {
+            const link = `https://t.me/earning_ai_guide_bot/app?startapp=${user.uid}`;
+            const input = document.createElement('input');
+            input.value = link;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            alert("লিংক কপি হয়েছে!");
+        }
+    </script>
+</body>
+</html>
