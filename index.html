@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RDS TEAM - Verified Earning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Firebase Legacy Scripts (Most Stable) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { 
+            background-color: #050810; 
+            font-family: 'Inter', sans-serif; 
+            color: #f8fafc; 
+            margin: 0; 
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Splash Screen */
+        #splash {
+            position: fixed;
+            inset: 0;
+            background: #050810;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loader-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .loader-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #dc2626, #2563eb);
+            transition: width 0.3s ease;
+        }
+
+        .nav-blur {
+            backdrop-filter: blur(20px);
+            background: rgba(10, 15, 30, 0.8);
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn-click:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <!-- Splash Screen -->
+    <div id="splash">
+        <div class="text-red-600 mb-6">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+        <h1 class="text-3xl font-black italic tracking-widest text-white">RDS TEAM</h1>
+        <div class="loader-bar"><div id="loader-fill" class="loader-fill"></div></div>
+        <p class="mt-4 text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Connecting to RDS Server...</p>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="hidden h-screen flex flex-col">
+        <!-- Header -->
+        <header class="px-6 py-5 flex justify-between items-center bg-slate-900/30 border-b border-white/5">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-black">R</div>
+                <span class="font-black italic text-xl">RDS TEAM</span>
+            </div>
+            <div id="user-photo" class="w-10 h-10 rounded-full border border-blue-500/30 overflow-hidden bg-blue-600 flex items-center justify-center font-bold">U</div>
+        </header>
+
+        <!-- Dynamic Content -->
+        <main class="flex-1 overflow-y-auto p-6 pb-32">
+            
+            <!-- Home Tab -->
+            <div id="home" class="tab-content active space-y-6">
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-900 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden">
+                    <p class="text-white/60 text-[10px] font-black uppercase tracking-widest">Available Balance</p>
+                    <h2 class="text-5xl font-black mt-1">$<span id="balance">0.000</span></h2>
+                    <div class="mt-6 inline-block bg-white/10 px-4 py-1 rounded-full text-[9px] font-bold uppercase border border-white/10">Verified Pro User</div>
+                </div>
+
+                <button onclick="earnMoney()" class="w-full bg-slate-900 border border-blue-500/10 p-6 rounded-[2rem] flex items-center justify-between btn-click shadow-lg">
+                    <div class="flex items-center gap-4">
+                        <div class="p-4 bg-blue-600/10 rounded-2xl text-blue-500">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </div>
+                        <div class="text-left">
+                            <h4 class="font-bold text-lg">Watch Ads</h4>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Earn $0.005 instantly</p>
+                        </div>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-white/5 text-center">
+                        <p class="text-[10px] text-slate-500 font-black uppercase">Total Clicks</p>
+                        <p id="clicks" class="text-2xl font-black mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-900/50 p-6 rounded-3xl border border-white/5 text-center">
+                        <p class="text-[10px] text-slate-500 font-black uppercase">Total Refer</p>
+                        <p id="refers" class="text-2xl font-black mt-1">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdraw Tab -->
+            <div id="withdraw" class="tab-content space-y-6">
+                <h3 class="text-2xl font-black italic">WITHDRAW</h3>
+                <div class="bg-slate-900 p-8 rounded-[2rem] border border-blue-500/10 space-y-4">
+                    <div>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Select Method</p>
+                        <select id="method" class="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none font-bold">
+                            <option value="bKash">bKash (Personal)</option>
+                            <option value="Nagad">Nagad (Personal)</option>
+                            <option value="Binance">Binance (USDT)</option>
+                        </select>
+                    </div>
+                    <input id="amount" type="number" placeholder="Amount ($)" class="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none font-bold">
+                    <input id="address" type="text" placeholder="Number / Address" class="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none font-bold">
+                    <button onclick="requestPayout()" class="w-full bg-blue-600 py-5 rounded-2xl font-black shadow-lg shadow-blue-900/20 btn-click">Request Payment</button>
+                    <p class="text-center text-[9px] text-slate-600 font-bold uppercase tracking-widest">Minimum Payout $5.00</p>
+                </div>
+            </div>
+
+            <!-- Refer Tab -->
+            <div id="refer" class="tab-content space-y-6 text-center">
+                <div class="w-20 h-20 bg-indigo-600/10 rounded-3xl flex items-center justify-center mx-auto text-indigo-500 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+                <h3 class="text-3xl font-black italic">REFER & EARN</h3>
+                <div class="bg-slate-900 p-8 rounded-[2rem] border border-slate-800 text-left">
+                    <p class="text-[10px] text-slate-400 mb-3 uppercase font-black">Your Invite Link</p>
+                    <div id="refer-link" class="bg-black/40 p-4 rounded-xl border border-white/5 truncate text-[10px] font-mono text-blue-400">Loading...</div>
+                    <button onclick="copyLink()" class="w-full mt-4 bg-indigo-600 py-4 rounded-xl font-black text-sm btn-click shadow-lg shadow-indigo-900/20">Copy Referral Link</button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 nav-blur px-6 py-4 pb-10 flex justify-around items-end z-50">
+            <button onclick="switchTab('home', this)" class="nav-btn text-blue-500 flex flex-col items-center gap-1">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="text-[8px] font-black uppercase">Home</span>
+            </button>
+            <button onclick="switchTab('refer', this)" class="nav-btn text-slate-500 flex flex-col items-center gap-1">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                <span class="text-[8px] font-black uppercase">Refer</span>
+            </button>
+            <button onclick="switchTab('withdraw', this)" class="relative -top-6">
+                <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl shadow-blue-900/40 text-white btn-click">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
+                </div>
+            </button>
+            <button class="nav-btn text-slate-500 flex flex-col items-center gap-1 opacity-50">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <span class="text-[8px] font-black uppercase">History</span>
+            </button>
+            <button class="nav-btn text-slate-500 flex flex-col items-center gap-1 opacity-50">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="text-[8px] font-black uppercase">Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb_2_4r89AhNKceMJ80HvX-MOgSlcUegY",
+            authDomain: "earning-ai-guide.firebaseapp.com",
+            projectId: "earning-ai-guide",
+            storageBucket: "earning-ai-guide.firebasestorage.app",
+            messagingSenderId: "856725361260",
+            appId: "1:856725361260:web:f3248390c3db55f65c3e49"
+        };
+
+        const APP_ID = 'rds_pro_official_v1';
+        const BOT_NAME = 'earning_ai_guide_bot';
+        let db, auth, currentUser, userData = null;
+
+        // Splash Loader Logic
+        let progress = 0;
+        const fill = document.getElementById('loader-fill');
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 100) progress = 100;
+            fill.style.width = progress + '%';
+            if (progress === 100) {
+                clearInterval(interval);
+                checkInit();
+            }
+        }, 200);
+
+        function checkInit() {
+            if (window.firebase) {
+                initApp();
+            } else {
+                setTimeout(checkInit, 500);
+            }
+        }
+
+        async function initApp() {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+
+            try {
+                // Anonymous Login
+                const cred = await auth.signInAnonymously();
+                currentUser = cred.user;
+                
+                const userRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(currentUser.uid);
+                
+                userRef.onSnapshot(async (doc) => {
+                    if (doc.exists) {
+                        userData = doc.data();
+                        updateUI();
+                    } else {
+                        const referrer = tg.initDataUnsafe?.start_param || null;
+                        const initial = {
+                            uid: currentUser.uid,
+                            name: tg.initDataUnsafe?.user?.first_name || "Guest",
+                            balance: 0.50, // Welcome Bonus
+                            clicks: 0,
+                            referrals: 0,
+                            photo: tg.initDataUnsafe?.user?.photo_url || null
+                        };
+                        await userRef.set(initial);
+                        
+                        if (referrer && referrer !== currentUser.uid) {
+                            const refRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(referrer);
+                            await refRef.update({
+                                balance: firebase.firestore.FieldValue.increment(0.10),
+                                referrals: firebase.firestore.FieldValue.increment(1)
+                            });
+                        }
+                    }
+                    
+                    document.getElementById('splash').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                });
+
+            } catch (err) {
+                console.error("Firebase Error:", err);
+                alert("আপনার ফোনের ডাটা চেক করুন অথবা ফায়ারবেসে Anonymous Auth এনাবল করুন।");
+            }
+        }
+
+        function updateUI() {
+            if (!userData) return;
+            document.getElementById('balance').innerText = userData.balance.toFixed(3);
+            document.getElementById('clicks').innerText = userData.clicks;
+            document.getElementById('refers').innerText = userData.referrals;
+            document.getElementById('refer-link').innerText = `t.me/${BOT_NAME}/app?startapp=${currentUser.uid}`;
+            if (userData.photo) {
+                document.getElementById('user-photo').innerHTML = `<img src="${userData.photo}" class="w-full h-full object-cover">`;
+            } else {
+                document.getElementById('user-photo').innerText = userData.name[0];
+            }
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-blue-500', 'text-slate-500'));
+            if (btn.classList.contains('nav-btn')) btn.classList.replace('text-slate-500', 'text-blue-500');
+        }
+
+        async function earnMoney() {
+            if (!currentUser) return;
+            await db.collection('artifacts').doc(APP_ID).collection('users').doc(currentUser.uid).update({
+                balance: firebase.firestore.FieldValue.increment(0.005),
+                clicks: firebase.firestore.FieldValue.increment(1)
+            });
+        }
+
+        async function requestPayout() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const addr = document.getElementById('address').value;
+            const method = document.getElementById('method').value;
+
+            if (amount < 5) return alert("মিনিমাম $5 লাগবে।");
+            if (amount > userData.balance) return alert("আপনার ব্যালেন্স কম।");
+            if (!addr) return alert("নম্বর বা এড্রেস দিন।");
+
+            await db.collection('artifacts').doc(APP_ID).collection('payouts').add({
+                uid: currentUser.uid,
+                name: userData.name,
+                amount, method, address: addr,
+                status: 'pending',
+                time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await db.collection('artifacts').doc(APP_ID).collection('users').doc(currentUser.uid).update({
+                balance: firebase.firestore.FieldValue.increment(-amount)
+            });
+
+            alert("রিকোয়েস্ট সফল হয়েছে!");
+        }
+
+        function copyLink() {
+            const link = `https://t.me/${BOT_NAME}/app?startapp=${currentUser.uid}`;
+            const el = document.createElement('textarea');
+            el.value = link;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert("Refer link copied!");
+        }
+    </script>
+</body>
+</html>
