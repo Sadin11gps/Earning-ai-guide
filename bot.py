@@ -203,7 +203,7 @@ def change_language(message):
 # --- Language বাটন ---
 @bot.message_handler(func=lambda m: m.text == '🌍 Language')
 def language_handler(message):
-    lang = get_user_lang(message.from_user.id)AAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'.send_message(message.from_user.id, texts['language'], reply_markup=language_menu())
+    lang = get_user_lang(message.from_user.id)AAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'.send_message(message.from_user.id, texts['language'], reply_markup=language_menu()
 
 # --- অ্যাডমিন লগইন ---
 @bot.message_handler(commands=['admin'])
