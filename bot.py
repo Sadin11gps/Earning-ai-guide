@@ -19,7 +19,7 @@ captcha_manager = CaptchaManager(API_TOKEN)
 
 app = Flask(__name__)
 
-# --- ল্যাঙ্গুয়েজ ডিকশনারি (সব escape ঠিক করা) ---
+# --- ল্যাঙ্গুয়েজ ডিকশনারি (triple quotes দিয়ে syntax error ঠিক করা) ---
 LANGUAGES = {
     'en': {
         'welcome': "👋 Welcome!\n\nℹ️ This bot helps you earn money by doing simple tasks.\n\nBy using this Bot, you automatically agree to the Terms of Use.👉 https://telegra.ph/FAQ----CRAZY-MONEY-BUX-12-25-2",
@@ -48,7 +48,11 @@ LANGUAGES = {
         'send_success': "✅ Message sent to user!",
         'user_not_found': "❌ User not found.",
         'user_list_header': "👥 <b>All Users List:</b>\n\n",
-        'user_list_format': "🆔 <b>ID:</b> <code>{}</code>\n👤 <b>Name:</b> {} {}\n💰 <b>Balance:</b> \( {:.4f}\n👥 <b>Referrals:</b> {}\n📤 <b>Paid Withdraw:</b> \){:.4f}\n\n",
+        'user_list_format': """🆔 <b>ID:</b> <code>{}</code>
+👤 <b>Name:</b> {} {}
+💰 <b>Balance:</b> ${:.4f}
+👥 <b>Referrals:</b> {}
+📤 <b>Paid Withdraw:</b> ${:.4f}\n\n""",
         'no_users': "📭 No users yet.",
     },
     'bn': {
@@ -78,12 +82,22 @@ LANGUAGES = {
         'send_success': "✅ মেসেজ পাঠানো হয়েছে!",
         'user_not_found': "❌ ইউজার পাওয়া যায়নি।",
         'user_list_header': "👥 <b>সব ইউজারের লিস্ট:</b>\n\n",
-        'user_list_format': "🆔 <b>ID:</b> <code>{}</code>\n👤 <b>নাম:</b> {} {}\n💰 <b>ব্যালেন্স:</b> \( {:.4f}\n👥 <b>রেফারেল:</b> {}\n📤 <b>পেইড উইথড্র:</b> \){:.4f}\n\n",
+        'user_list_format': """🆔 <b>ID:</b> <code>{}</code>
+👤 <b>নাম:</b> {} {}
+💰 <b>ব্যালেন্স:</b> ${:.4f}
+👥 <b>রেফারেল:</b> {}
+📤 <b>পেইড উইথড্র:</b> ${:.4f}\n\n""",
         'no_users': "📭 এখনো কোনো ইউজার নেই।",
     }
 }
 
-# --- ডাটাবেস সেটআপ ---
+# --- বাকি কোড পুরোটা (কোনো কাটা নেই) ---
+
+# ডাটাবেস, generate_full_creds, main_menu, admin_menu, language_menu, get_task_price, is_menu_button, get_user_lang, /start, ল্যাঙ্গুয়েজ, /admin, broadcast, send message, User List, handle_all, process_withdraw, admin_balance, admin_set_price, callback_handler (CAPTCHA + approve/reject), webhook
+
+# (আমি পুরোটা লিখছি – কোনো বাদ নেই)
+
+# ডাটাবেস সেটআপ (আগের মতোই)
 def init_db():
     conn = sqlite3.connect('socialbux.db', check_same_thread=False)
     cursor = conn.cursor()
@@ -124,7 +138,7 @@ def init_db():
 
 init_db()
 
-# --- জেনারেটর ফাংশন ---
+# জেনারেটর ফাংশন (আগের মতো)
 def generate_full_creds():
     first_names = ["Brian", "James", "Robert", "John", "Michael", "William", "David", "Richard", "Joseph", "Thomas"]
     last_names = ["Holloway", "Rasmussen", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis"]
@@ -138,7 +152,7 @@ def generate_full_creds():
     recovery = f"{recovery_prefix}@hotmail.com"
     return f_name, l_name, password, email, recovery
 
-# --- কিবোর্ডস ---
+# কিবোর্ডস (আগের মতো)
 def main_menu():
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add('💰 Balance', '📋 Tasks')
@@ -174,7 +188,7 @@ def is_menu_button(text):
     buttons = ['💰 Balance', '📋 Tasks', '📤 Withdraw', '👤 Profile', '📋 History', '🤔 FAQ', '👥 My Referrals', '🌍 Language', '❌ Cancel', '🏠 Exit Admin', 'TRX', '✅ Account registered', '▶️ Start', '🔙 Back', '🇺🇸 English', '🇧🇩 বাংলা', '📢 Broadcast', '📩 Send Message', '📝 Task History', '💸 Withdraw History', '💰 Manage Balance', '⚙️ Set Task Price', '👥 User List']
     return text in buttons
 
-# --- হেল্পার ফাংশন ---
+# হেল্পার ফাংশন
 def get_user_lang(user_id):
     conn = sqlite3.connect('socialbux.db', check_same_thread=False)
     cursor = conn.cursor()
@@ -183,29 +197,31 @@ def get_user_lang(user_id):
     conn.close()
     return row[0] if row and row[0] else 'en'
 
-# --- /start ---
+# /start
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     captcha_manager.send_new_captcha(bot, message.chat.id, message.from_user)
 
-# --- ল্যাঙ্গুয়েজ চেঞ্জ ---
+# ল্যাঙ্গুয়েজ চেঞ্জ
 @bot.message_handler(func=lambda m: m.text in ['🇺🇸 English', '🇧🇩 বাংলা'])
 def change_language(message):
     user_id = message.from_user.id
     new_lang = 'en' if message.text == '🇺🇸 English' else 'bn'
     conn = sqlite3.connect('socialbux.db', check_same_thread=False)
-    conn.execute("UPDATE users SET language=? WHERE id=?", (new_lang, user_id))
+    cAAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'ge=? WHERE id=?", (new_lang, user_id))
     conn.commit()
     conn.close()
     texts = LANGUAGES[new_lang]
     bot.send_message(user_id, texts['lang_set'], reply_markup=main_menu())
 
-# --- Language বাটন ---
+# Language বাটন
 @bot.message_handler(func=lambda m: m.text == '🌍 Language')
 def language_handler(message):
-    lang = get_user_lang(message.from_user.id)AAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'.send_message(message.from_user.id, texts['language'], reply_markup=language_menu()
+    lang = get_user_lang(message.from_user.id)
+    texts = LANGUAGES[lang]
+    bot.send_message(message.from_user.id, texts['language'], reply_markup=language_menu())
 
-# --- অ্যাডমিন লগইন ---
+# অ্যাডমিন লগইন
 @bot.message_handler(commands=['admin'])
 def admin_login(message):
     if message.from_user.id in ADMIN_IDS:
@@ -220,7 +236,7 @@ def verify_admin(message):
     else:
         bot.send_message(message.chat.id, "❌ Wrong Password.")
 
-# --- অ্যাডমিনে Broadcast ---
+# অ্যাডমিনে Broadcast
 @bot.message_handler(func=lambda m: m.text == '📢 Broadcast' and m.from_user.id in ADMIN_IDS)
 def admin_broadcast(message):
     admin_lang = get_user_lang(message.from_user.id)
@@ -251,7 +267,7 @@ def broadcast_message(message):
 
     bot.send_message(message.chat.id, texts['broadcast_success'].format(sent_count), reply_markup=admin_menu())
 
-# --- অ্যাডমিনে Send Message ---
+# অ্যাডমিনে Send Message
 @bot.message_handler(func=lambda m: m.text == '📩 Send Message' and m.from_user.id in ADMIN_IDS)
 def admin_send(message):
     admin_lang = get_user_lang(message.from_user.id)
@@ -286,7 +302,7 @@ def admin_send_final(message, target_id):
     except:
         bot.send_message(message.chat.id, texts['user_not_found'], reply_markup=admin_menu())
 
-# --- User List বাটন ---
+# User List বাটন
 @bot.message_handler(func=lambda m: m.text == '👥 User List' and m.from_user.id in ADMIN_IDS)
 def admin_user_list(message):
     admin_lang = get_user_lang(message.from_user.id)
@@ -313,7 +329,7 @@ def admin_user_list(message):
     
     bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=admin_menu())
 
-# --- মেইন হ্যান্ডলার ---
+# মেইন হ্যান্ডলার
 @bot.message_handler(func=lambda message: True)
 def handle_all(message):
     user_id = message.from_user.id
@@ -506,7 +522,7 @@ def handle_all(message):
             bot.register_next_step_handler(msg, admin_balance_id_step)
             return
 
-# --- সাব ফাংশনসমূহ ---
+# সাব ফাংশনসমূহ (আগের মতো)
 def process_withdraw_amount(message):
     user_id = message.from_user.id
     lang = get_user_lang(user_id)
@@ -648,9 +664,8 @@ def callback_handler(call):
     except Exception as e:
         print("Error in callback:", e)
 
-print("🤖 Gmail Factory Bot is Running - Final Version with CAPTCHA!")
+print("🤖 Gmail Factory Bot is Running - Final Fixed Version with CAPTCHA!")
 
-# --- Webhook routes ---
 @app.route('/' + API_TOKEN, methods=['POST'])
 def get_webhook():
     if request.headers.get('content-type') == 'application/json':
