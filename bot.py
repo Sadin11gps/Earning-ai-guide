@@ -19,7 +19,7 @@ captcha_manager = CaptchaManager(API_TOKEN)
 
 app = Flask(__name__)
 
-# --- ল্যাঙ্গুয়েজ ডিকশনারি ---
+# --- ল্যাঙ্গুয়েজ ডিকশনারি (সব escape ঠিক করা) ---
 LANGUAGES = {
     'en': {
         'welcome': "👋 Welcome!\n\nℹ️ This bot helps you earn money by doing simple tasks.\n\nBy using this Bot, you automatically agree to the Terms of Use.👉 https://telegra.ph/FAQ----CRAZY-MONEY-BUX-12-25-2",
@@ -187,7 +187,6 @@ def get_user_lang(user_id):
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     captcha_manager.send_new_captcha(bot, message.chat.id, message.from_user)
-    return  # Wait for CAPTCHA
 
 # --- ল্যাঙ্গুয়েজ চেঞ্জ ---
 @bot.message_handler(func=lambda m: m.text in ['🇺🇸 English', '🇧🇩 বাংলা'])
@@ -204,8 +203,7 @@ def change_language(message):
 # --- Language বাটন ---
 @bot.message_handler(func=lambda m: m.text == '🌍 Language')
 def language_handler(message):
-    lang = get_user_lang(message.froAAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'g]
-    bot.send_message(message.from_user.id, texts['language'], reply_markup=language_menu())
+    lang = get_user_lang(message.from_user.id)AAG5z--eYoWDpek1XeoY3eyXtdlsOhI0Et4'.send_message(message.from_user.id, texts['language'], reply_markup=language_menu())
 
 # --- অ্যাডমিন লগইন ---
 @bot.message_handler(commands=['admin'])
@@ -584,7 +582,6 @@ def callback_handler(call):
     captcha = captcha_manager.update_captcha(bot, call)
     if captcha:
         if captcha.solved:
-            # CAPTCHA solved - proceed with registration
             user_id = call.from_user.id
             lang = get_user_lang(user_id)
             texts = LANGUAGES[lang]
@@ -601,6 +598,7 @@ def callback_handler(call):
         else:
             bot.answer_callback_query(call.id, "Wrong! Try again.", show_alert=True)
         return
+
     try:
         data = call.data.split('_')
         act, uid, tid = data[0], int(data[1]), int(data[2])
@@ -650,7 +648,7 @@ def callback_handler(call):
     except Exception as e:
         print("Error in callback:", e)
 
-print("🤖 Gmail Factory Bot is Running - With CAPTCHA!")
+print("🤖 Gmail Factory Bot is Running - Final Version with CAPTCHA!")
 
 # --- Webhook routes ---
 @app.route('/' + API_TOKEN, methods=['POST'])
